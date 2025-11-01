@@ -1,215 +1,841 @@
+<!doctype html>
 
-<!DOCTYPE html>
 <html lang="ja">
+
 <head>
-  <meta charset="UTF-8" />
-  <title>NUMBERS3</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      font-family: "Hiragino Kaku Gothic ProN", sans-serif;
-      background-color: #ffffff;
-      color: #c1a57b;
-      text-align: center;
-      padding: 20px;
-    }
-    h1 {
-      font-size: 28px;
-    }
-    button {
-      background-color: #c1a57b;
-      color: #5a4635;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    #result, #details {
-      margin-top: 20px;
-    }
-    #details {
-      font-size: 14px;
-      white-space: pre-line;
-      color: #7c6240;
-      font-family: 'Arial', sans-serif;
-      max-width: 400px;
-      margin: 20px auto;
-    }
-    #details h3 {
-      text-align: center;
-      color: #2a4d69;
-      margin-bottom: 20px;
-    }
-    img {
-      max-width: 150px;
-      margin-top: 20px;
-    }
-    table {
-      border-collapse: collapse;
-      margin: 1em auto;
-      width: auto;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 0.4em 0.8em;
-      text-align: center;
-    }
-    th {
-      background-color: #f0f8ff;
-    }
-    .input-row {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    .prediction-card {
-      background: #fff;
-      border: 2px solid #2a4d69;
-      border-radius: 8px;
-      padding: 15px 20px;
-      margin-bottom: 15px;
-      box-shadow: 0 2px 6px rgba(42, 77, 105, 0.3);
-    }
-    .prediction-card strong {
-      color: #1e2a47;
-    }
-    .prediction-icon {
-      font-size: 1.2em;
-      margin-right: 8px;
-    }
-    #recommendations {
-  list-style: none;
-  text-align: center;
-  padding: 0;
-  margin: 20px auto;
-}
 
-#recommendations li::before {
-  content: "🐟 ";
-  margin-right: 8px;
-}
+<meta charset="utf-8" />
 
-  </style>
-</head>
-<body>
-  <h1>NUMBERS3</h1>
-  <div class="center">
-    <img src="n3.png" alt="にゃんこ" />
-  </div>
-    <div class="input-row">
-    <input type="file" id="csvFile" accept=".csv" />
-    <button onclick="predict()">予想する</button>
-  </div>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+
+<title>ナンバーズ3 ミニ分析（予測TOP3付き）</title>
+
+<style>
+
+ :root{
+
+  --bg:#fffaf6;
+
+  --text:#4b3828;
+
+  --accent:#bfa087;
+
+  --card:#fffaf7;
+
+  --border:#e8ddd5;
+
+  --brown-h:30;
+
+ }
+
+ body{
+
+  font-family: "Noto Sans JP", sans-serif;
+
+  margin:20px;
+
+  background:var(--bg);
+
+  color:var(--text);
+
+ }
+
+ h1{ font-size:20px; margin:0 0 12px 0; }
+
+ .section{ background:#fff; border:1px solid var(--border); border-radius:10px; padding:14px; margin-top:14px; }
+
+ textarea{
+
+  width:100%;
+
+  min-height:120px;
+
+  border-radius:8px;
+
+  border:1px solid var(--border);
+
+  padding:10px;
+
+  font-family:monospace;
+
+  box-sizing:border-box;
+
+  background:#fffaf7;
+
+  color:var(--text);
+
+ }
+
+ .controls{ margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+
+ .btn{
+
+  background:var(--accent); color:white; border:none; border-radius:8px; padding:8px 12px; cursor:pointer;
+
+ }
+
+ .btn.secondary{ background:#e6d6c4; color:var(--text); border:1px solid #d8c5b0; }
+
+ .layout{ display:flex; gap:18px; margin-top:18px; align-items:flex-start; flex-wrap:wrap }
+
   
-  <div id="result"></div>
-  <ul id="recommendations"></ul>
 
-  <script>
-    const wheel100 = "0123456789";
-    const wheel10 = "0741852963";
-    const wheel1 = "0987654321";
+/* heatmap table */
 
-    function toWheelIndex(numStr) {
-      return [
-        wheel100.indexOf(numStr[0]),
-        wheel10.indexOf(numStr[1]),
-        wheel1.indexOf(numStr[2])
-      ];
-    }
+.heatwrap {
 
-    function calcDiffs(indicesList) {
-      const diffs = [];
-      for (let i = 1; i < indicesList.length; i++) {
-        const prev = indicesList[i - 1];
-        const curr = indicesList[i];
-        diffs.push([
-          (curr[0] - prev[0] + 10) % 10,
-          (curr[1] - prev[1] + 10) % 10,
-          (curr[2] - prev[2] + 10) % 10
-        ]);
-      }
-      return diffs;
-    }
+ flex: 1;
 
-    function countDiffs(diffs) {
-      const count = {};
-      for (const diff of diffs) {
-        const key = diff.join(",");
-        count[key] = (count[key] || 0) + 1;
-      }
-      return count;
-    }
+ min-width: 360px;
 
-    function topDiffs(count, topN = 3) {
-      return Object.entries(count)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, topN)
-        .map(entry => entry[0].split(",").map(Number));
-    }
+ margin-left: 40px; /* ←この値を少しずつ増やして調整！ */
 
-    function reconstructNumber(lastIndex, diff) {
-      return [
-        wheel100[(lastIndex[0] + diff[0]) % 10],
-        wheel10[(lastIndex[1] + diff[1]) % 10],
-        wheel1[(lastIndex[2] + diff[2]) % 10]
-      ].join("");
-    }
+}
 
-    function predict() {
-      const input = document.getElementById("csvFile");
-      if (!input.files[0]) {
-        alert("まずはCSVファイルを選択してください！");
-        return;
-      }
 
-      const file = input.files[0];
-      const reader = new FileReader();
 
-      reader.onload = function (e) {
-        try {
-          const sjisArray = new Uint8Array(e.target.result);
-          const decodedText = new TextDecoder("shift-jis").decode(sjisArray);
-          const lines = decodedText.split("\n").filter(line => line.trim() !== "");
 
-          const nums = lines
-            .slice(1)
-            .map(line => line.split(",")[2]?.trim())
-            .filter(n => n && /^\d{3}$/.test(n))
-            .slice(-21);
 
-          if (nums.length < 2) {
-            alert("有効なデータが不足しています。CSVファイルの内容を確認してください。");
-            return;
-          }
+#heatmap { display: grid; grid-template-columns: repeat(10, 68px); gap: 4px; width: 720px; max-width: 100%; margin-top: 16px; margin-left: auto; margin-right: 60px; /* ← ここで右寄せ位置を調整 */ justify-content: right; /* ← grid内部も右揃え */ }
 
-          const indices = nums.map(toWheelIndex);
-          const diffs = calcDiffs(indices);
-          const counts = countDiffs(diffs);
-          const tops = topDiffs(counts, 3);
+.cell {
 
-          const lastIndex = indices[indices.length - 1];
-          const results = tops.map(diff => reconstructNumber(lastIndex, diff));
+ border-radius: 6px;
 
-          const list = document.getElementById("recommendations");
-          list.innerHTML = "";
-          results.forEach(num => {
-            const li = document.createElement("li");
-            li.textContent = num;
-            list.appendChild(li);
-          });
+ width: 68px;
 
-          document.getElementById("result").textContent = "予想完了！下に表示されます";
-        } catch (err) {
-          alert("Shift_JISの読み込みに失敗しました。CSVファイルを確認してください。");
-        }
-      };
+ height: 34px;
 
-      reader.readAsArrayBuffer(file); // ← Shift_JISデコード用に ArrayBuffer で読み込み
-    }
-  </script>
+ display: flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+ background: #f4ede9;
+
+ font-size: 14px;
+
+ font-weight: 600;
+
+ color: #4b3b35;
+
+}
+
+
+
+ .cell .num{ font-weight:700; }
+
+ .cell .cnt{ font-size:14px; margin-top:0px; color:#3f2f29 }
+
+ .legend{ font-size:12px; color:#6b544a; margin-top:8px; }
+
+
+
+ /* ranking */
+
+.rankbox {
+
+ width: 260px;
+
+ min-width: 220px;
+
+ margin-left: auto; /* これで右寄せ */
+
+ margin-right: 20px; /* 右の余白ちょい確保 */
+
+}
+
+.rankbox h3 {
+
+ font-size: 15px;
+
+ margin: 0 0 8px 0;
+
+ color: var(--accent);
+
+}
+
+.ranklist {
+
+ font-size: 13px;
+
+ line-height: 1.6;
+
+ text-align: left;
+
+}
+
+
+
+.legend {
+
+ display: inline-block; /* ブロックじゃなく、必要な幅だけ */
+
+ text-align: right;
+
+ width: auto;      /* 親幅に引っ張られない */
+
+ float: right;      /* 右端に寄せる */
+
+ margin-top: 6px;
+
+ font-size: 12px;
+
+ color: #6b5548;
+
+}
+
+
+
+
+
+
+
+ /* cards row */
+
+ .cards{ display:flex; gap:14px; justify-content:center; margin-top:22px; flex-wrap:nowrap; overflow-x:auto; padding-bottom:6px; }
+
+ .card{
+
+  background:var(--card);
+
+  border:1px solid #d4bca3;
+
+  border-radius:16px;
+
+  padding:12px 14px;
+
+  width:200px;
+
+  box-shadow:2px 2px 8px rgba(0,0,0,0.06);
+
+  box-sizing:border-box;
+
+  flex:0 0 200px;
+
+ }
+
+ .card h4{ margin:0 0 8px 0; color: #8b5e3c; font-size:15px; }
+
+ .card ol{ margin:0; padding:0; list-style:none; font-size:14px; text-align:left; line-height:1.6 }
+
+ .card li{ padding:4px 0; border-bottom:1px dashed #e0cbb1; }
+
+ .card .small{ font-size:12px; color:#6b544a; margin-top:8px }
+
+
+
+ /* responsive */
+
+ @media (max-width:980px){
+
+  #heatmap{ width:520px; gap:5px; }
+
+  .cell{ padding:10px 4px; min-height:44px; font-size:13px }
+
+ }
+
+ @media (max-width:720px){
+
+  .layout{ flex-direction:column; }
+
+  .cards{ flex-wrap:wrap; justify-content:center; }
+
+  .card{ width:46%; flex:0 0 46%; }
+
+  #heatmap{ width:100%; grid-template-columns: repeat(10, 1fr); }
+
+ }
+
+</style>
+
+</head>
+
+<body>
+
+ <h1>ナンバーズ3 ミニ分析（予測TOP3）</h1>
+
+
+
+ <div class="section">
+
+  <div class="note">ナンバーズ3 の当選番号を 1 行ずつ（古→新）で貼り付けてください。例：<br><code>374</code>（3桁）</div>
+
+  <textarea id="dataInput" placeholder="例：&#10;368&#10;630&#10;064&#10;072&#10;055"></textarea>
+
+
+
+  <div class="controls">
+
+   <button class="btn" id="analyzeBtn">分析</button>
+
+   <button class="btn secondary" id="clearBtn">クリア</button>
+
+   <div style="margin-left:auto; font-size:12px; color:#6b544a">解析対象：全行（古→新順）</div>
+
+  </div>
+
+
+
+  <div class="layout">
+
+   <div class="heatwrap section" style="padding:12px;">
+
+    <div style="font-size:14px; color:#7a6654">00〜99 出現ヒートマップ（数字（回数））</div>
+
+    <div id="heatmap" aria-hidden="false"></div>
+
+    <div class="legend">濃いほど出現頻度が高い。未出は淡い背景。表示は「04（2）」形式。</div>
+
+   </div>
+
+
+
+   <div class="rankbox section">
+
+    <h3>出現ランキング（上位10）</h3>
+
+    <div id="ranking" class="ranklist">データを解析してください。</div>
+
+    <div style="margin-top:12px;">
+
+     <h3>末尾9の状況</h3>
+
+     <div id="ending9" style="font-size:13px; color:#6b544a">-</div>
+
+    </div>
+
+   </div>
+
+  </div>
+
+
+
+  <!-- Cards row: 頻繁度 / 間隔 / 未出 / 波 / 予測TOP3 -->
+
+  <div class="cards" id="cardsRow" style="margin-top:18px">
+
+   <div class="card" id="cardFreq">
+
+    <h4>頻繁度</h4>
+
+    <ol id="freqList"><li>—</li><li>—</li><li>—</li></ol>
+
+    <div class="small">出現回数の多い順</div>
+
+   </div>
+
+
+
+   <div class="card" id="cardInterval">
+
+    <h4>間隔</h4>
+
+    <ol id="intervalList"><li>—</li><li>—</li><li>—</li></ol>
+
+    <div class="small">最後の出現からの空き（大きいほど“出やすい”）</div>
+
+   </div>
+
+
+
+   <div class="card" id="cardMissing">
+
+    <h4>未出</h4>
+
+    <ol id="missingList"><li>—</li><li>—</li><li>—</li></ol>
+
+    <div class="small">この期間で一度も出現がないペア</div>
+
+   </div>
+
+
+
+   <div class="card" id="cardWave">
+
+    <h4>波</h4>
+
+    <ol id="waveList"><li>—</li><li>—</li><li>—</li></ol>
+
+    <div class="small">近隣ペアの出現状況から波を推定</div>
+
+   </div>
+
+
+
+   <div class="card" id="cardPredict">
+
+    <h4>予測TOP3</h4>
+
+    <ol id="predictList"><li>—</li><li>—</li><li>—</li></ol>
+
+    <div class="small">総合スコア（出現頻度・直近度・未出ボーナス）で算出</div>
+
+   </div>
+
+  </div>
+
+
+
+ </div>
+
+
+
+<script>
+
+/* --- ヘルパー --- */
+
+function sanitizeInput(s){
+
+ s = s.replace(/[０-９]/g, ch=>String.fromCharCode(ch.charCodeAt(0)-0xFEE0));
+
+ // keep only digits and line breaks
+
+ s = s.replace(/[^\d\n\r]/g,'');
+
+ return s;
+
+}
+
+function pad2(n){ return n.toString().padStart(2,'0'); }
+
+
+
+/* --- コア解析 --- */
+
+function parseLines(text){
+
+ const t = sanitizeInput(text).split(/\r?\n/).map(l=>l.trim()).filter(l=>l!=='');
+
+ // normalize each to last 3 digits (if user pasted 1-3 digits)
+
+ return t.map(l => /^\d{1,3}$/.test(l) ? l.padStart(3,'0').slice(-3) : l);
+
+}
+
+
+
+function analyzeAll(lines){
+
+ const n = lines.length;
+
+ const counts = Array(100).fill(0);
+
+ const lastIndex = Array(100).fill(-1); // last index where appeared (0-based)
+
+ for(let i=0;i<n;i++){
+
+  const ln = lines[i];
+
+  if(!/^\d{3}$/.test(ln)) continue;
+
+  const mini = parseInt(ln.slice(-2),10);
+
+  counts[mini]++;
+
+  lastIndex[mini] = i; // i increases from old->new
+
+ }
+
+ // INT: distance since last occurrence (smaller = recent). We'll calculate as: if never -> n, else (n-1-lastIndex)
+
+ const INT = lastIndex.map(idx => idx===-1 ? n : (n-1-idx));
+
+
+
+ return {counts, lastIndex, INT, total:n};
+
+}
+
+
+
+/* --- 各ランキング算出 --- */
+
+function topByCount(counts, topN=3){
+
+ return counts.map((c,i)=>({num:i,count:c}))
+
+  .sort((a,b)=>b.count-a.count||a.num-b.num)
+
+  .slice(0,topN);
+
+}
+
+function topByINT(INT, counts, topN=3){
+
+ // larger INT => longer since seen => "overdue"
+
+ return INT.map((v,i)=>({num:i, gap:v, count:counts[i]}))
+
+  .sort((a,b)=>b.gap-a.gap||a.num-b.num)
+
+  .slice(0,topN);
+
+}
+
+function topMissing(counts, topN=3){
+
+ return counts.map((c,i)=>({num:i,count:c}))
+
+  .filter(x=>x.count===0)
+
+  .slice(0,topN)
+
+  .map(x=>x);
+
+}
+
+function topByWave(counts, topN=3){
+
+ // heuristic: for each number, sum counts of near neighbours (±1 in tens or ones)
+
+ const neighborScore = Array(100).fill(0);
+
+ for(let i=0;i<100;i++){
+
+  const t = Math.floor(i/10), u = i%10;
+
+  // neighbors: same ten ±1, same unit tens change ±10, plus ±1 total within 00-99
+
+  const neigh = [];
+
+  if(u-1>=0) neigh.push(t*10 + (u-1));
+
+  if(u+1<=9) neigh.push(t*10 + (u+1));
+
+  if(t-1>=0) neigh.push((t-1)*10 + u);
+
+  if(t+1<=9) neigh.push((t+1)*10 + u);
+
+  // also diagonal neighbours
+
+  if(u-1>=0 && t+1<=9) neigh.push((t+1)*10 + (u-1));
+
+  if(u+1<=9 && t-1>=0) neigh.push((t-1)*10 + (u+1));
+
+  let s=0;
+
+  neigh.forEach(idx=> s += counts[idx] || 0);
+
+  neighborScore[i]=s;
+
+ }
+
+ return neighborScore.map((s,i)=>({num:i,score:s,count:counts[i]}))
+
+  .sort((a,b)=>b.score-a.score||b.count-a.count||a.num-b.num)
+
+  .slice(0,topN);
+
+}
+
+
+
+/* --- 予測スコアリング --- */
+
+function predictTop3(counts, INT, lastIndex, total){
+
+ const maxCount = Math.max(...counts) || 1;
+
+ const scores = [];
+
+ for(let i=0;i<100;i++){
+
+  const c = counts[i];
+
+  const intv = INT[i]; // n if never, else gap
+
+  const never = lastIndex[i]===-1 ? 1 : 0;
+
+  // weights: freq 0.5, recentness 0.3 (use inverse of int), never-bonus 0.2
+
+  const freqTerm = (c / maxCount) * 0.5;
+
+  const intTerm = (1 / (intv + 1)) * 0.3; // smaller gap -> bigger? we want recent favored OR overdue? choose recent boost to favor both: use 1/(int+1) favors recent. To also reward overdue, we rely on separate interval card.
+
+  const neverTerm = never * 0.2;
+
+  const score = freqTerm + intTerm + neverTerm;
+
+  scores.push({num:i,score, count:c, intv, never});
+
+ }
+
+ scores.sort((a,b)=>b.score-a.score||b.count-b.count||a.num-b.num);
+
+ return scores.slice(0,3);
+
+}
+
+
+
+/* --- UI render --- */
+
+function renderHeatmap(counts){
+
+ const container = document.getElementById('heatmap');
+
+ container.innerHTML='';
+
+ const max = Math.max(...counts);
+
+ for(let r=0;r<10;r++){
+
+  for(let c=0;c<10;c++){
+
+   const idx = r*10 + c;
+
+   const val = counts[idx];
+
+   const ratio = max? val / max : 0;
+
+   const light = 92 - ratio*36; // ←46→36で濃すぎを抑える
+
+   const bg = `hsl(${30}, 36%, ${light}%)`;
+
+   const el = document.createElement('div');
+
+   el.className='cell';
+
+   el.style.background = bg;
+
+   // display "04（2）" when count>0, else "04"
+
+   if(val>0){
+
+    el.innerHTML = `<span class="num">${pad2(idx)}</span><span class="cnt">（${val}）</span>`;
+
+   } else {
+
+    el.innerHTML = `<span class="num">${pad2(idx)}</span>`;
+
+    el.style.color = '#8a6d55';
+
+   }
+
+   container.appendChild(el);
+
+  }
+
+ }
+
+}
+
+
+
+function renderRankingTop10(counts){
+
+ const arr = counts.map((v,i)=>({num:i,count:v}))
+
+  .filter(x=>x.count>0)
+
+  .sort((a,b)=>b.count-a.count||a.num-b.num)
+
+  .slice(0,10);
+
+ if(arr.length===0){ document.getElementById('ranking').innerHTML = 'データがありません。'; return; }
+
+ let html = '<ol style="padding-left:18px;margin:6px 0 0 0;text-align:left">';
+
+ arr.forEach((r,i)=> html += `<li>${pad2(r.num)}（${r.count}回）</li>`);
+
+ html += '</ol>';
+
+ document.getElementById('ranking').innerHTML = html;
+
+}
+
+
+
+function renderEnding9(INT, counts){
+
+ const items = [];
+
+ const missing = [];
+
+ for(let k=9;k<=99;k+=10){
+
+  items.push(`${pad2(k)}(${counts[k]})`);
+
+  if(counts[k]===0) missing.push(pad2(k));
+
+ }
+
+ document.getElementById('ending9').innerText = items.join(' ');
+
+ // and show missing
+
+ // place missing in cardMissing top if needed
+
+ return missing;
+
+}
+
+
+
+function fillCard(id, list, formatCallback){
+
+ const el = document.getElementById(id);
+
+ const ol = el.querySelector('ol');
+
+ ol.innerHTML = '';
+
+ if(!list || list.length===0){
+
+  ol.innerHTML = '<li>—</li><li>—</li><li>—</li>';
+
+  return;
+
+ }
+
+ for(let i=0;i<3;i++){
+
+  const it = list[i];
+
+  if(it){
+
+   const txt = formatCallback(it);
+
+   const li = document.createElement('li');
+
+   li.innerHTML = txt;
+
+   ol.appendChild(li);
+
+  } else {
+
+   const li = document.createElement('li');
+
+   li.textContent = '—';
+
+   ol.appendChild(li);
+
+  }
+
+ }
+
+}
+
+
+
+/* --- イベント --- */
+
+document.getElementById('analyzeBtn').addEventListener('click', ()=> {
+
+ const raw = document.getElementById('dataInput').value;
+
+ const lines = parseLines(raw);
+
+ if(lines.length===0){ alert('番号を入力してください（古→新順）'); return; }
+
+ const {counts, lastIndex, INT, total} = analyzeAll(lines);
+
+
+
+ // render heatmap + ranking
+
+ renderHeatmap(counts);
+
+ renderRankingTop10(counts);
+
+ const missing9 = renderEnding9(INT, counts);
+
+
+
+ // fill freq card
+
+ const freq = topByCount(counts,3);
+
+ fillCard('cardFreq', freq, it => `${pad2(it.num)}（${it.count}回）`);
+
+
+
+ // fill interval card (largest INT => most overdue)
+
+ const intTop = topByINT(INT, counts, 10); // get candidates
+
+ fillCard('cardInterval', intTop.slice(0,3), it => `${pad2(it.num)}（空き ${it.gap}）`);
+
+
+
+ // fill missing card (never appeared)
+
+ const missing = counts.map((c,i)=>({num:i,count:c})).filter(x=>x.count===0).slice(0,10);
+
+ fillCard('cardMissing', missing.slice(0,3), it => `${pad2(it.num)}（未出）`);
+
+
+
+ // fill wave card (heuristic)
+
+ const wave = topByWave(counts,3);
+
+ fillCard('cardWave', wave, it => `${pad2(it.num)}（周辺 ${it.score}）`);
+
+
+
+ // predict top3 (combined score)
+
+ const predict = predictTop3(counts, INT, lastIndex, total);
+
+ fillCard('cardPredict', predict, it => `${pad2(it.num)}（score:${it.score.toFixed(2)}）`);
+
+
+
+ // additionally if many missing9, optionally highlight, but we returned missing9
+
+ // show in missing card if any 9s missing (user liked seeing 59/69/99 earlier)
+
+ if(missing9.length){
+
+  // append small note into cardMissing
+
+  const cm = document.getElementById('cardMissing').querySelector('.small');
+
+  cm.textContent = '未出末尾9：' + missing9.join(' , ');
+
+ } else {
+
+  const cm = document.getElementById('cardMissing').querySelector('.small');
+
+  cm.textContent = '未出なし';
+
+ }
+
+});
+
+
+
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+
+ document.getElementById('dataInput').value='';
+
+ document.getElementById('heatmap').innerHTML='';
+
+ document.getElementById('ranking').innerHTML='データを解析してください。';
+
+ // clear cards
+
+ ['cardFreq','cardInterval','cardMissing','cardWave','cardPredict'].forEach(id=>{
+
+  const ol = document.getElementById(id).querySelector('ol');
+
+  ol.innerHTML = '<li>—</li><li>—</li><li>—</li>';
+
+  const cm = document.getElementById(id).querySelector('.small');
+
+  if(cm) cm.textContent = '';
+
+ });
+
+ document.getElementById('ending9').innerText='-';
+
+});
+
+</script>
+
 </body>
+
 </html>
